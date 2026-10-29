@@ -1,0 +1,633 @@
+/* =============================================================================
+   LA LEY VISUAL
+   =============================================================================
+   Se importa DESPUÉS de globals.css en src/app/layout.tsx. Eso es deliberado:
+   así la ley gana la cascada sin reescribir globals.css, y quitar una línea
+   del layout revierte TODO. Reversible por diseño.
+
+   PRINCIPIO ÚNICO — el morado es el sistema, el ámbar eres tú.
+
+   Este archivo solo declara TOKENS y PRIMITIVAS con nombre propio. No pisa
+   utilidades de Tailwind: si algo aquí compitiera con una utilidad, ganaría
+   siempre y eso rompería el resto de la app.
+   ========================================================================== */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   0 · QUÉ CAMBIA RESPECTO AL DESIGN SYSTEM ANTERIOR
+
+   La skill `design-system` de este repo es la ley previa y sigue vigente en
+   casi todo: `solid-card`, `btn-primary`, `badge-level`, la escala de
+   espaciado, `rounded-xl` para cards, las tres duraciones. Nada de eso se
+   toca — es el vocabulario de la casa y funciona.
+
+   Esta ley la sucede en TRES puntos, y solo en esos tres:
+
+   1. EL SIGNIFICADO DEL ORO. La guía anterior le daba dos: "Gold =
+      premium/pinned" y "Amber = atención/warning". Dos significados en la
+      misma familia de color es exactamente lo que produjo 15 hexadecimales
+      dorados y 17 variables --*gold* midiendo el repo hoy. Aquí el ámbar
+      significa UNA cosa: es tuyo, o está vivo. El "atención/warning" pasa a
+      --warning, que ya existe y nadie estaba usando para eso.
+
+   2. LA ESCALA TIPOGRÁFICA BAJA. La guía anterior listaba `text-[11px]` como
+      el token "Tiny". Eso no era desorden de los componentes: era la guía
+      pidiendo un valor arbitrario porque el escalón no existía. Ahora existe
+      (`text-2xs`), y con `text-3xs` absorben 242 de los 301 arbitrarios.
+
+   3. LA ELEVACIÓN. Eran cinco niveles (L0-L4) mezclando elevación con estados
+      de hover. Aquí son cuatro niveles de PROFUNDIDAD, y el hover es un
+      estado, no un nivel. Con la regla nueva: una superficie no puede
+      contener otra del mismo nivel.
+
+   Al cerrar la re-arquitectura, la skill se actualiza para que no queden dos
+   leyes contradictorias — que es el bug que esta ley vino a arreglar.
+
+   ─────────────────────────────────────────────────────────────────────────
+   1 · COLOR
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Un solo dorado. Medido antes de esta ley: 15 hexadecimales dorados
+     distintos y 17 variables --*gold* conviviendo sin reconciliar. */
+  --gold: #ff9101;
+  --gold-bright: #ffac3d;
+  --gold-dark: #cc7301;
+  /* SIN COMAS, a propósito. `tailwind.config.ts` consume esta variable como
+     `rgb(var(--gold-rgb) / <alpha-value>)`, que es la sintaxis moderna de CSS
+     Color 4 y exige los canales separados por ESPACIOS. Con comas el resultado
+     es `rgb(255, 145, 1 / 1)` —mezcla de sintaxis legacy y moderna— que es
+     inválido, y el navegador descarta la declaración entera.
+     Costo medido de haberlo escrito con comas: `bg-gold` renderizaba
+     rgba(0,0,0,0) y `text-gold` heredaba el color del padre, o sea que TODAS
+     las utilidades de dorado del sitio quedaron mudas. Y de rebote, las
+     auditorías de ámbar daban "0 usos" y parecían limpieza cuando en realidad
+     era color que no llegaba a pintarse. */
+  --gold-rgb: 255 145 1;
+
+  /* Las tres intensidades del ámbar, que es lo que hace que la regla
+     semántica se pueda aplicar sin inventar colores nuevos cada vez:
+       vivo  = está pasando AHORA, o es el peldaño en el que estás
+       tuyo  = ya lo ganaste; sigue siendo tuyo, pero no compite con el ahora
+       huella= el rastro más tenue: fondos, bordes de lo conquistado */
+  --ambar-vivo: var(--gold);
+  --ambar-tuyo: color-mix(in srgb, var(--gold) 62%, transparent);
+  --ambar-huella: color-mix(in srgb, var(--gold) 12%, transparent);
+
+  /* ── Radio. Cinco valores y ni uno más.
+     Medido antes: 16 valores distintos escritos a mano en globals.css,
+     incluidos 999px y 9999px — la misma cosa dicha de dos formas. */
+  --r-sello: 4px;    /* chips diminutos, sellos */
+  --r-control: 8px;  /* botón, input, botón de icono */
+  --r-base: 12px;    /* LA superficie: el default de todo contenedor */
+  --r-mayor: 16px;   /* modal, panel, burbuja de mensaje */
+  --r-pildora: 9999px;
+
+  /* ── Movimiento. Tres duraciones, tres curvas. */
+  --t-rapido: 120ms;   /* hover, foco, cambio de estado */
+  --t-normal: 200ms;   /* aparecer, desaparecer, desplegar */
+  --t-lento: 350ms;    /* transición de ruta, entrada de panel */
+  --curva-entra: cubic-bezier(.16, 1, .3, 1);      /* lo que llega */
+  --curva-estado: cubic-bezier(.4, 0, .2, 1);      /* lo que cambia */
+  --curva-celebra: cubic-bezier(.34, 1.3, .64, 1); /* solo para celebrar */
+
+  /* ── Elevación. Cuatro niveles, y no hay un quinto.
+     Medido antes: 101 sombras distintas, 38 escritas a mano sin token. */
+  --sombra-1: none;
+  --sombra-2: 0 1px 2px rgb(0 0 0 / .28), 0 6px 16px -4px rgb(0 0 0 / .22);
+  --sombra-3: 0 2px 6px rgb(0 0 0 / .32), 0 18px 48px -12px rgb(0 0 0 / .45);
+
+  /* ── La voz del agente. Ganó por A/B contra tres alternativas: la medida
+     controlada (~64ch) más el serif son las dos señales que hacen que un
+     texto se lea como documento y no como interfaz. La medida de hoy en
+     producción es de 110-115 caracteres por línea: muy por encima del
+     máximo cómodo, que ronda los 75-90. */
+  --voz-serif: ui-serif, 'New York', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --voz-medida: 72ch;
+  /* El ancho de la COLUMNA de conversación, no del panel. Ver §12. */
+  --hilo-columna: 50rem;
+  --voz-tam: 18px;
+  --voz-interlinea: 1.68;
+}
+
+.dark {
+  --sombra-2: 0 1px 2px rgb(0 0 0 / .5), 0 6px 18px -4px rgb(0 0 0 / .4);
+  --sombra-3: 0 2px 8px rgb(0 0 0 / .55), 0 20px 56px -12px rgb(0 0 0 / .6);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   2 · LOS CUATRO NIVELES DE SUPERFICIE
+
+   La regla que arregla el card-dentro-de-card: una superficie de nivel 1
+   NO puede contener otra de nivel 1. Dentro se separa con espacio o con una
+   línea — nunca con otra caja.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Nivel 1 · superficie. Donde vive el contenido.
+   La versión plana (borde 1px, sin sombra) se retira; la superficie recupera la física del titanio con los MISMOS
+   tokens de la casa (--depth-*, --rim-light de globals.css) en vez de
+   inventar sombras nuevas. Un solo lugar: las 17 superficies que usan
+   .sup/.sup-i la heredan sin tocar sus archivos. */
+.sup {
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-top-color: rgba(255, 255, 255, 0.18); /* luz direccional del titanio */
+  border-radius: var(--r-base);
+  box-shadow: var(--depth-rest-soft), var(--rim-light);
+}
+
+.sup-i {
+  transition:
+    box-shadow var(--t-rapido) var(--curva-estado),
+    border-color var(--t-rapido) var(--curva-estado),
+    background-color var(--t-rapido) var(--curva-estado),
+    transform var(--t-rapido) var(--curva-estado);
+}
+.sup-i:hover {
+  background: var(--card-hover);
+  border-color: var(--border-accent);
+  border-top-color: rgba(255, 255, 255, 0.30);
+  box-shadow: var(--depth-hover), var(--rim-light-strong), var(--depth-anchor);
+  transform: translateY(-3px);
+}
+.sup-i:active {
+  transform: translateY(-1px);
+}
+
+/* Nivel 2 · elevada. Lo que flota sobre la superficie: menú, popover, toast. */
+.sup-2 {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-base);
+  box-shadow: var(--sombra-2);
+}
+
+/* Nivel 3 · modal. Lo que bloquea. */
+.sup-3 {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-mayor);
+  box-shadow: var(--sombra-3);
+}
+
+/* Separador interior: la alternativa a meter otra caja dentro. */
+.sup-div {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 0;
+}
+
+/* El gesto de la casa. Único sitio donde el morado y el ámbar se tocan.
+   Se reserva para lo que enmarca algo importante de verdad; no es un default. */
+.bisel {
+  position: relative;
+  padding: 1px;
+  border-radius: var(--r-mayor);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / .10), transparent 20%),
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--primary) 30%, transparent),
+      color-mix(in srgb, var(--gold) 18%, transparent),
+      transparent 64%);
+}
+.bisel > * { border-radius: calc(var(--r-mayor) - 1px); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   3 · LA VOZ DEL AGENTE
+
+   El encargo textual: "que la conversación se lea como un documento, no como
+   un chat de soporte". Dos señales, las dos necesarias: medida controlada y
+   serif. Con una sola no cruza.
+   ───────────────────────────────────────────────────────────────────────── */
+/* La medida limitada es de la PROSA, no del contenedor. Un diagrama, una
+   tabla o un bloque de código dentro de la respuesta no son prosa: si heredan
+   los 64ch se estrangulan — medido, un grafo de 5,035 px de ancho quedó
+   encajonado en 563. Así que la medida vive en los párrafos, y lo demás usa
+   todo el ancho que tenga. */
+/* La doble clase no es adorno: `github-markdown-css` define font-family y
+   font-size sobre `.markdown-body`, que es el contenedor donde vive la voz.
+   Con un solo `.voz` la especificidad empata y quien gana depende del orden en
+   que Next inyecte cada hoja — o sea, de la suerte. Medido: la respuesta salía
+   en -apple-system 16px, o sea sin ley. `.markdown-body.voz` y `.voz.voz`
+   ganan siempre, sin recurrir a !important. */
+.markdown-body.voz,
+.voz.voz {
+  font-family: var(--voz-serif);
+  font-size: var(--voz-tam);
+  line-height: var(--voz-interlinea);
+  letter-spacing: .003em;
+}
+.markdown-body.voz-corta,
+.voz-corta.voz-corta {
+  font-size: 16.5px;
+  line-height: 1.5;
+}
+.markdown-body.voz > p,
+.markdown-body.voz > ul,
+.markdown-body.voz > ol,
+.markdown-body.voz > blockquote { max-width: var(--voz-medida); }
+.voz-corta.voz-corta > p { max-width: 56ch; }
+
+.voz {
+  font-family: var(--voz-serif);
+  font-size: var(--voz-tam);
+  line-height: var(--voz-interlinea);
+  color: var(--foreground);
+  letter-spacing: .003em;
+}
+
+.voz > p,
+.voz > ul,
+.voz > ol,
+.voz > blockquote,
+.voz > h1, .voz > h2, .voz > h3, .voz > h4, .voz > h5, .voz > h6 {
+  max-width: var(--voz-medida);
+}
+
+.voz p { margin-bottom: 1em; }
+.voz p:last-child { margin-bottom: 0; }
+
+/* Lo que no es prosa respira a lo ancho. */
+.voz > figure,
+.voz > pre,
+.voz > table,
+.voz > img,
+.voz > .markdown-body { max-width: 100%; }
+
+/* EL ÉNFASIS DENTRO DE LA PROSA NO ES GROSOR, ES INCLINACIÓN.
+   Tres mecanismos compitieron sobre el caso más duro —cuatro términos
+   marcados en una sola oración—. La negrita, a 700 o a 600, corta el ojo
+   cuatro veces y convierte el párrafo en un glosario incrustado; bajarle el
+   peso ni siquiera se registra a esta escala. La itálica es el registro que
+   el ojo ya lee como "término que se define dentro de la frase", el gesto de
+   los manuales, y deja las cuatro palabras DENTRO de la sintaxis.
+
+   Y va sin color: un cálido aquí caería en la familia del ámbar, que está
+   reservado para lo que es del miembro o está vivo. "Referencia", "sensor" y
+   "comparador" son vocabulario del mecanismo — territorio del morado, no del
+   ámbar. La inclinación sola carga el énfasis. */
+.voz strong, .voz b {
+  font-weight: inherit;
+  font-style: italic;
+  color: color-mix(in srgb, var(--foreground) 100%, transparent);
+}
+.voz em, .voz i { font-style: italic; }
+
+/* En una LISTA la negrita sí es correcta y se recupera: ahí el término no
+   está incrustado en una frase, es la etiqueta de su propia fila, y se lee
+   como especificación, no como glosario forzado. */
+.voz li > strong:first-child,
+.voz li > b:first-child { font-weight: 600; font-style: normal; }
+
+/* Una respuesta de dos líneas no necesita el molde del documento: el aire
+   pensado para prosa larga la vuelve ceremoniosa. Bajo cierto largo, la voz
+   se compacta sin perder la familia. */
+.voz-corta {
+  font-size: 16.5px;
+  line-height: 1.5;
+  max-width: 56ch;
+}
+
+/* Las listas dentro de la voz se leen como prosa, no como acta: viñeta
+   pequeña y tenue, y el término separado de su definición por un guion largo. */
+.voz ul { margin: 0 0 1em; padding-left: 0; list-style: none; }
+.voz ul li { position: relative; padding-left: 20px; margin-bottom: .42em; }
+.voz ul li::before {
+  content: '';
+  position: absolute;
+  left: 5px; top: .72em;
+  width: 4px; height: 4px;
+  border-radius: var(--r-pildora);
+  background: color-mix(in srgb, var(--foreground) 34%, transparent);
+}
+.voz ol { margin: 0 0 1em; padding-left: 1.4em; }
+.voz ol li { margin-bottom: .42em; }
+
+/* El chrome NUNCA es serif: la firma del agente, los controles y las
+   etiquetas se quedan en sans para que el párrafo destaque como contenido. */
+.voz-firma {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   4 · EL ESTADO DE ESPERA
+
+   Nada finge trabajo. Un indicador que se ve igual a los 0.5 s que a los 20 s
+   está mintiendo. Aquí se narra lo que el motor de agentes sabe de verdad:
+   qué herramienta corre y con qué entrada.
+
+   Gramática del color: el morado significa UNA cosa — "todavía no hay nada" —
+   y desaparece en cuanto llega texto. Por eso el paso que está corriendo NO se
+   distingue por color sino por MOVIMIENTO.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* El cursor: aparece exactamente donde va a nacer el texto, y solo mientras
+   no hay ni un carácter. */
+.espera-cursor {
+  display: inline-block;
+  width: 8px; height: 17px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--primary) 75%, transparent);
+  animation: espera-latir 1.15s ease-in-out infinite;
+}
+
+.espera { display: flex; flex-direction: column; gap: 2px; }
+
+.espera-paso {
+  position: relative;
+  padding-left: 15px;
+  font-size: 13.5px;
+  line-height: 1.72;
+  font-style: italic;
+  color: color-mix(in srgb, var(--foreground) 42%, transparent);
+  transition: color var(--t-normal) var(--curva-estado);
+}
+.espera-paso::before {
+  content: '';
+  position: absolute;
+  left: 2px; top: .62em;
+  width: 4px; height: 4px;
+  border-radius: var(--r-pildora);
+  background: color-mix(in srgb, var(--foreground) 24%, transparent);
+}
+.espera-paso em { font-style: italic; color: color-mix(in srgb, var(--foreground) 58%, transparent); }
+
+/* El paso en curso: mismo color, otro movimiento. */
+.espera-paso.viva { color: color-mix(in srgb, var(--foreground) 74%, transparent); }
+.espera-paso.viva em { color: color-mix(in srgb, var(--foreground) 84%, transparent); }
+/* El punto activo lleva DOS señales, no una: es más grande en reposo (marca
+   estática) y además late (marca viva). Si el latido se congela —reduced
+   motion, una miniatura, un freeze-frame— la identidad no se pierde. */
+.espera-paso.viva::before {
+  left: 1px; top: .55em;
+  width: 6px; height: 6px;
+  background: color-mix(in srgb, var(--foreground) 58%, transparent);
+  animation: espera-pulso 1.5s ease-in-out infinite;
+}
+
+@keyframes espera-latir { 0%, 100% { opacity: 1 } 50% { opacity: .25 } }
+@keyframes espera-pulso {
+  0%, 100% { transform: scale(1);    opacity: .72 }
+  50%      { transform: scale(1.35); opacity: 1 }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   5 · LA REGLA DEL ÁMBAR, HECHA CLASES
+
+   El ámbar significa UNA cosa: esto es tuyo, o esto está vivo ahora.
+   Si no puedes decir en voz alta "esto es del miembro" o "esto está pasando",
+   no es ámbar.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Está pasando AHORA, o es el peldaño donde estás parado. */
+.es-vivo { color: var(--ambar-vivo); }
+.es-vivo-fondo {
+  border-color: color-mix(in srgb, var(--gold) 50%, transparent);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--gold) 7%, transparent), transparent 55%),
+    var(--card);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 10%, transparent);
+}
+.es-vivo-punto {
+  background: var(--gold);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--gold) 45%, transparent);
+}
+
+/* Ya lo ganaste. Sigue siendo tuyo, pero no le pelea el foco al ahora. */
+.es-tuyo { color: var(--ambar-tuyo); }
+.es-tuyo-fondo { background: var(--ambar-huella); color: var(--ambar-tuyo); }
+
+/* Un filo izquierdo tenue: lo conquistado se reconoce por la tarjeta completa,
+   no por dos elementos diminutos que hay que buscar. Es la huella del ámbar,
+   nunca el halo — ese le pertenece a lo que está vivo AHORA. */
+.es-tuyo-filo {
+  border-left: 2px solid color-mix(in srgb, var(--gold) 34%, transparent);
+}
+
+/* Todavía no es tuyo: neutro, sin dramatizar. */
+.es-pendiente { color: var(--muted); opacity: .82; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   6 · MOVIMIENTO REDUCIDO
+
+   Lo decorativo se apaga. Lo funcional —lo que comunica un estado— se reduce
+   pero no desaparece: si se apagara, el usuario dejaría de saber qué pasa.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .espera-cursor { animation-duration: 2.4s; }
+  .espera-paso.viva::before { animation: none; opacity: 1; transform: none; }
+  .sup-i { transition: none; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   7 · LA BURBUJA DEL MIEMBRO
+
+   Lo que decía antes: tres gradientes apilados, un borde con tres colores
+   distintos y cinco sombras, todo sobre el morado de marca. Eso no es una
+   burbuja de mensaje, es un botón forjado — y le ganaba en peso visual a la
+   respuesta del agente, que es donde está el valor.
+
+   La ley dice que el contenido es el protagonista. Y el referente de la casa
+   llegó a la misma conclusión: su burbuja de usuario es gris neutro, con el
+   comentario "el contenido es el protagonista".
+
+   El morado no se pierde: sigue marcando quién habla, pero como acento en el
+   borde, no como una mancha sólida. Va aquí y no en globals.css para que
+   quitar el import de la ley revierta también esto.
+   ───────────────────────────────────────────────────────────────────────── */
+.msg-bubble-own.msg-bubble-own {
+  background: var(--card-active);
+  background-image: none;
+  border: 1px solid var(--border);
+  border-top-color: color-mix(in srgb, var(--border) 55%, var(--foreground) 12%);
+  border-bottom-color: var(--border);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/* El otro lado del contraste: la voz del miembro se queda en sans, la del
+   agente va en serif. Ese salto de familia es lo que hace evidente quién
+   habla, sin necesidad de pintar nada. */
+.msg-bubble-own.msg-bubble-own :where(p, span, div) { color: inherit; }
+
+/* Los enlaces dentro de la voz van en el morado del sistema.
+   `github-markdown-css` los pinta de su azul (#4493f8), que no es de esta
+   marca y además compite con el único acento que sí significa algo. */
+.markdown-body.voz a,
+.voz.voz a {
+  color: var(--primary);
+  text-decoration-color: color-mix(in srgb, var(--primary) 45%, transparent);
+  text-underline-offset: 2px;
+}
+.markdown-body.voz a:hover,
+.voz.voz a:hover { text-decoration-color: var(--primary); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   8 · LA TARJETA DE CONTENIDO
+
+   Enmienda propuesta por la superficie de comunidad y aceptada: el
+   tratamiento del título y el cuerpo de una tarjeta de post ganó en A/B, pero
+   vivía repetido con valores arbitrarios en cada componente. Si un patrón se
+   va a repetir, tiene nombre — y si no lo tiene, vuelve la fragmentación que
+   esta ley vino a arreglar.
+   ───────────────────────────────────────────────────────────────────────── */
+.tarjeta-titulo {
+  font-size: 20px;
+  font-weight: 660;
+  line-height: 1.26;
+  letter-spacing: -.017em;
+  color: var(--foreground);
+}
+.tarjeta-cuerpo {
+  font-size: 13.5px;
+  line-height: 1.54;
+  color: color-mix(in srgb, var(--foreground) 58%, transparent);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   9 · TRES ENMIENDAS QUE PIDIÓ EL FAN-OUT
+
+   Las superficies no pueden escribir aquí, pero sí proponer. Estas tres
+   llegaron de la superficie del shell y las tres tenían razón.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* 9.1 · Sombra para chrome anclado ABAJO.
+   `--sombra-2` y `--sombra-3` proyectan hacia abajo (offset Y positivo), que
+   es lo correcto para algo que flota SOBRE la página. Pero la navegación
+   inferior está pegada al borde de la ventana: su sombra caería fuera de la
+   pantalla y no haría nada. Se invierte el eje. */
+:root {
+  --sombra-2-arriba: 0 -1px 2px rgb(0 0 0 / .28), 0 -6px 16px -4px rgb(0 0 0 / .22);
+}
+.dark {
+  --sombra-2-arriba: 0 -1px 2px rgb(0 0 0 / .5), 0 -6px 18px -4px rgb(0 0 0 / .4);
+}
+.sup-2-arriba {
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  box-shadow: var(--sombra-2-arriba);
+}
+
+/* 9.2 · El subrayado del tab activo mezclaba ámbar.
+   `.sf-nav-underline` de globals.css lleva `var(--gold)` al 50 % en su
+   gradiente. La navegación activa es sistema, y el sistema es morado — si el
+   ámbar aparece ahí, deja de significar "es tuyo o está vivo". Se corrige
+   desde aquí para no tocar el CSS compartido. */
+.sf-nav-underline.sf-nav-underline {
+  background: linear-gradient(90deg,
+    transparent,
+    var(--primary) 22%,
+    var(--primary) 78%,
+    transparent);
+}
+
+/* 9.3 · El isotipo de la marca se queda como está.
+   Su resplandor dorado no es un estado —no es "tuyo" ni está "vivo"— pero
+   tampoco es una decisión de interfaz: es el logotipo, y el logotipo ES la
+   marca. La regla del ámbar gobierna lo que la interfaz DICE del usuario, no
+   la identidad impresa encima. Queda declarado para que nadie lo "arregle". */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   10 · EL STREAMING HABLA CON LA MISMA VOZ
+
+   El texto llega palabra por palabra en un componente y, al aterrizar el
+   mensaje real, se cambia por el render de markdown. Si cada uno usa una
+   tipografía distinta, se ve el salto justo cuando el ojo ya está leyendo.
+   La voz del agente empieza en serif desde la primera palabra.
+   ───────────────────────────────────────────────────────────────────────── */
+.msg-stream-text.voz-stream {
+  font-family: var(--voz-serif);
+  font-size: var(--voz-tam);
+  line-height: var(--voz-interlinea);
+  max-width: var(--voz-medida);
+  letter-spacing: .003em;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   11 · EL CHAT LLEGA AL FONDO TAMBIÉN EN ESCRITORIO
+
+   En móvil el composer ya se pega al borde inferior: `data-fullbleed-chat`
+   neutraliza los paddings y el hilo toma el alto completo. En escritorio no,
+   y quedaban 73 px de aire muerto debajo del input — medido en una ventana de
+   950 px: el hilo terminaba en 891.
+
+   La causa era un `100vh - 180px` heredado: 180 era el margen del header
+   viejo, no lo que el chrome ocupa de verdad. Ahora se resta el chrome real
+   —header (97 px) + el padding superior del contenedor (24)— y se anula el
+   padding inferior, igual que en móvil.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 768px) {
+  :root { --chat-chrome: 121px; }
+
+  .sf-container:has([data-fullbleed-chat]) { padding-bottom: 0 !important; }
+  main.sf-mobile-safe:has([data-fullbleed-chat]) { padding-bottom: 0 !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   12 · LA COLUMNA DE CONVERSACIÓN
+
+   Medido: el párrafo del agente ocupaba 741 px y dejaba 269 px vacíos a la
+   derecha, mientras la burbuja del miembro llegaba a 12 px del borde. Esa
+   ASIMETRÍA era el problema, no la medida.
+
+   Y la salida no es ensanchar el texto: para llenar 990 px harían falta ~110
+   caracteres por línea, que es exactamente el número del que veníamos huyendo.
+   Lo que hace ChatGPT es lo contrario — estrecha la COLUMNA y la centra, así
+   el texto llena su contenedor sin pasarse de medida. En móvil ya pasa solo,
+   porque la pantalla es angosta: por eso ahí "se aprovecha súper bien".
+
+   La columna aplica a los mensajes y al composer por igual, para que la caja
+   de escribir quede alineada con la conversación y no con el panel.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 768px) {
+  .msg-thread-noselect > * {
+    max-width: var(--hilo-columna);
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .msg-composer-wrap {
+    max-width: var(--hilo-columna);
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   13 · EL GLOBO — la luz morada que sigue al cursor, desacoplada
+
+   `card-spotlight` de globals.css trae el globo PERO también su propia piel
+   (fondo, borde, hover con lift). El leaderboard ya tiene piel propia — los
+   estados ámbar del peldaño (es-vivo-fondo / es-tuyo-filo) — y no se pisa.
+   `.globo` es SOLO la capa de luz: se suma a cualquier tarjeta sin tocarle
+   fondo ni borde. Handlers compartidos: src/shared/hooks/useGlobo.ts. */
+.globo {
+  --spotlight-x: -100%;
+  --spotlight-y: -100%;
+  --spotlight-opacity: 0;
+  position: relative;
+}
+.globo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  border-radius: inherit;
+  opacity: var(--spotlight-opacity);
+  background: radial-gradient(
+    600px circle at var(--spotlight-x) var(--spotlight-y),
+    rgba(var(--primary-rgb), 0.06),
+    transparent 40%
+  );
+  transition: opacity var(--t-normal) var(--curva-estado);
+}

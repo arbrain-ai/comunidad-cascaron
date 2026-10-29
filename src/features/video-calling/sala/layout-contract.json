@@ -1,0 +1,8 @@
+{
+  "version": 6,
+  "output": { "width": 1920, "height": 1080, "fps": 24 },
+  "gutter": 12,
+  "radius": 16,
+  "sidebar": { "fraction": 0.2, "minWidth": 176, "maxWidth": 320, "maxTiles": 5, "ratio": 1.7777777777777777 },
+  "grid": { "landscapeRatios": [1.7777777777777777, 1.5, 1.3333333333333333], "portraitRatios": [1.3333333333333333, 1, 0.8, 0.75] }
+}
